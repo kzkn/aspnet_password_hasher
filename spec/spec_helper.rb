@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "rspec-parameterized"
 require "aspnet_password_hasher"
 
 RSpec.configure do |config|
