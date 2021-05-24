@@ -41,10 +41,10 @@ RSpec.describe AspnetPasswordHasher::PasswordHasher do
 
         hashed_password = hasher.hash_password("password 1")
         success_result = hasher.verify_hashed_password(hashed_password, "password 1")
-        expect(success_result).to be_truthy
+        expect(success_result).to eq :success
 
         failed_result = hasher.verify_hashed_password(hashed_password, "password 2")
-        expect(failed_result).to be_falsy
+        expect(failed_result).to eq :failed
       end
     end
   end
@@ -87,12 +87,12 @@ RSpec.describe AspnetPasswordHasher::PasswordHasher do
       example do
         hasher = AspnetPasswordHasher::PasswordHasher.new
         result = hasher.verify_hashed_password(hashed_password, "my password")
-        expect(result).to be_falsy
+        expect(result).to eq :failed
       end
     end
   end
 
-  describe '#verify_hashed_password success cases' do
+  describe '#verify_hashed_password version 2 success cases' do
     where(:hashed_password) do
       [
         # Version 2 payloads
@@ -107,9 +107,31 @@ RSpec.describe AspnetPasswordHasher::PasswordHasher do
 
     with_them do
       example do
+        hasher = AspnetPasswordHasher::PasswordHasher.new(mode: :v2)
+        result = hasher.verify_hashed_password(hashed_password, "my password")
+        expect(result).to eq :success
+      end
+    end
+  end
+
+  describe '#verify_hashed_password version 3 success cases' do
+    where(:hashed_password, :expected_result) do
+      [
+        # Version 2 payloads
+        ["ANXrDknc7fGPpigibZXXZFMX4aoqz44JveK6jQuwY3eH/UyPhvr5xTPeGYEckLxz9A==", :success_rehash_needed], # SHA1, 1000 iterations, 128-bit salt, 256-bit subkey
+        # Version 3 payloads
+        ["AQAAAAIAAAAyAAAAEOMwvh3+FZxqkdMBz2ekgGhwQ4B6pZWND6zgESBuWiHw", :success_rehash_needed], # SHA512, 50 iterations, 128-bit salt, 128-bit subkey
+        ["AQAAAAIAAAD6AAAAIJbVi5wbMR+htSfFp8fTw8N8GOS/Sje+S/4YZcgBfU7EQuqv4OkVYmc4VJl9AGZzmRTxSkP7LtVi9IWyUxX8IAAfZ8v+ZfhjCcudtC1YERSqE1OEdXLW9VukPuJWBBjLuw==", :success_rehash_needed], # SHA512, 250 iterations, 256-bit salt, 512-bit subkey
+        ["AQAAAAAAAAD6AAAAEAhftMyfTJylOlZT+eEotFXd1elee8ih5WsjXaR3PA9M", :success_rehash_needed], # SHA1, 250 iterations, 128-bit salt, 128-bit subkey
+        ["AQAAAAEAA9CQAAAAIESkQuj2Du8Y+kbc5lcN/W/3NiAZFEm11P27nrSN5/tId+bR1SwV8CO1Jd72r4C08OLvplNlCDc3oQZ8efcW+jQ=", :success], # SHA256, 250000 iterations, 256-bit salt, 256-bit subkey
+      ]
+    end
+
+    with_them do
+      example do
         hasher = AspnetPasswordHasher::PasswordHasher.new
         result = hasher.verify_hashed_password(hashed_password, "my password")
-        expect(result).to be_truthy
+        expect(result).to eq expected_result
       end
     end
   end

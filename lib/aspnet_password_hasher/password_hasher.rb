@@ -8,9 +8,11 @@ module AspnetPasswordHasher
   class PasswordHasher
     def initialize(options = {})
       @mode = options[:mode] || :v3
+      @rng = options[:random_number_generator] || SecureRandom
+
       case @mode
       when :v2
-        # nop
+        @iter_count = 0
       when :v3
         @iter_count = options[:iter_count] || 10000
         if @iter_count < 1
@@ -19,7 +21,6 @@ module AspnetPasswordHasher
       else
         raise ArgumentError, "Invalid password hasher compatibility mode"
       end
-      @rng = options[:random_number_generator] || SecureRandom
     end
 
     def hash_password(password)
@@ -37,12 +38,21 @@ module AspnetPasswordHasher
       case decoded_hashed_password[0]
       when "\x00"
         # v2
-        verify_hashed_password_v2(decoded_hashed_password, provided_password)
+        if verify_hashed_password_v2(decoded_hashed_password, provided_password)
+          @mode == :v3 ? :success_rehash_needed : :success
+        else
+          :failed
+        end
       when "\x01"
         # v3
-        verify_hashed_password_v3(decoded_hashed_password, provided_password)
+        result, embed_iter_count = verify_hashed_password_v3(decoded_hashed_password, provided_password)
+        if result
+          embed_iter_count < @iter_count ? :success_rehash_needed : :success
+        else
+          :failed
+        end
       else
-        false
+        :failed
       end
     end
 
@@ -58,7 +68,7 @@ module AspnetPasswordHasher
       subkey = OpenSSL::PKCS5.pbkdf2_hmac(password, salt, iter_count, subkey_len, digest)
 
       output_bytes = String.new
-      [0].pack('c', buffer: output_bytes)
+      output_bytes << "\x00" # format marker
       output_bytes << salt
       output_bytes << subkey
       output_bytes
@@ -74,7 +84,7 @@ module AspnetPasswordHasher
       subkey = OpenSSL::PKCS5.pbkdf2_hmac(password, salt, @iter_count, num_bytes_requested, digest)
 
       output_bytes = String.new
-      [1].pack('c', buffer: output_bytes) # format marker
+      output_bytes << "\x01" # format marker
       [prf].pack('N', buffer: output_bytes)
       [@iter_count].pack('N', buffer: output_bytes)
       [salt_size].pack('N', buffer: output_bytes)
@@ -106,14 +116,14 @@ module AspnetPasswordHasher
       salt_len = hashed_password[9..12].unpack('N')[0]
       # salt must be >= 128 bits
       if salt_len < 128 / 8
-        return false
+        return [false, nil]
       end
 
       salt = hashed_password[13...(13 + salt_len)]
       subkey_len = hashed_password.length - 13 - salt_len
       # subkey must by >= 128 bits
       if subkey_len < 128 / 8
-        return false
+        return [false, nil]
       end
 
       expected_subkey = hashed_password[(13 + salt_len)...hashed_password.length]
@@ -128,9 +138,9 @@ module AspnetPasswordHasher
                end
       actual_subkey = OpenSSL::PKCS5.pbkdf2_hmac(password, salt, iter_count, subkey_len, digest)
 
-      expected_subkey == actual_subkey
+      [expected_subkey == actual_subkey, iter_count]
     rescue StandardError
-      false
+      [false, nil]
     end
   end
 end
