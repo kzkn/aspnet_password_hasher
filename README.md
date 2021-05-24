@@ -1,8 +1,6 @@
 # AspnetPasswordHasher
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/aspnet_password_hasher`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+An implementation of password hashing compatible with [ASP.NET Identity PasswordHasher](https://github.com/dotnet/aspnetcore/blob/main/src/Identity/Extensions.Core/src/PasswordHasher.cs).
 
 ## Installation
 
@@ -22,7 +20,37 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+Password hashing:
+
+```ruby
+hasher = AspnetPasswordHasher::PasswordHasher.new
+raw_password = 'my password'
+hashed_password = hasher.hash_password(raw_password)
+```
+
+Verify password:
+
+```ruby
+hasher = AspnetPasswordHasher::PasswordHasher.new
+raw_password = 'my password'
+result = hasher.verify_hashed_password(hashed_password, raw_password)
+```
+
+You can pass parameters similar to PasswordHasher:
+
+```ruby
+# compatibility mode, version 2
+hasher = AspnetPasswordHasher::PasswordHasher.new(mode: :v2)
+
+# compatibility mode, version 3 (default)
+hasher = AspnetPasswordHasher::PasswordHasher.new(mode: :v3)
+
+# custom iteration count (default is 10000)
+hasher = AspnetPasswordHasher::PasswordHasher.new(iter_count: 99999)
+
+# custom random number generator (default is SecureRandom)
+hasher = AspnetPasswordHasher::PasswordHasher.new(random_number_generator: Random.new)
+```
 
 ## Development
 
@@ -32,7 +60,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/aspnet_password_hasher.
+Bug reports and pull requests are welcome on GitHub at https://github.com/kzkn/aspnet_password_hasher.
 
 ## License
 
