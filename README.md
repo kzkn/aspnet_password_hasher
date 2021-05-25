@@ -33,7 +33,22 @@ Verify password:
 ```ruby
 hasher = AspnetPasswordHasher::PasswordHasher.new
 raw_password = 'my password'
-result = hasher.verify_hashed_password(hashed_password, raw_password)
+hashed_password = hasher.hash_password(raw_password)
+hasher.verify_hashed_password(hashed_password, raw_password) # => :success
+hasher.verify_hashed_password(hashed_password, 'bad password') # => :failed
+```
+
+If a hashed string with a weaker algorithm is given, report it:
+```ruby
+hasher = AspnetPasswordHasher::PasswordHasher.new
+raw_password = 'my password'
+hashed_password = hasher.hash_password(raw_password)
+
+hasher_v2 = AspnetPasswordHasher::PasswordHasher.new(mode: :v2)
+hasher_v2.verify_hashed_password(hashed_password, raw_password) # => :success_rehash_needed
+
+hasher_fewer_iters = AspnetPasswordHasher::PasswordHasher.new(iter_count: 100)
+hasher_fewer_iters.verify_hashed_password(hashed_password, raw_password) # => :success_rehash_needed
 ```
 
 You can pass parameters similar to PasswordHasher:
