@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 0 * * 0'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby_version: [3.0, 2.7, 2.6, 2.5, 2.4]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby_version }}
+
+    - name: Run test
+      run: |
+        bundle update
+        bundle exec rake
+
+    - name: Upload coverage
+      uses: actions/upload-artifact@v2
+      if: always()
+      with:
+        name: coverage-ruby-${{ matrix.ruby_version }}
+        path: coverage
+
+    - name: Show coverage
+      if: always()
+      run: |
+        cat coverage/coverage.txt
