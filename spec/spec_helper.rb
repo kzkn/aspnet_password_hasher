@@ -1,5 +1,15 @@
 # frozen_string_literal: true
 
+require "simplecov"
+require "simplecov-erb"
+
+SimpleCov.start do
+  enable_coverage :branch
+  formatter SimpleCov::Formatter::ERBFormatter
+end
+
+SimpleCov.minimum_coverage 100
+
 require "rspec-parameterized"
 require "aspnet_password_hasher"
 

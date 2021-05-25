@@ -8,3 +8,5 @@ gem "rake"
 
 gem "rspec"
 gem "rspec-parameterized"
+gem "simplecov"
+gem "simplecov-erb"
