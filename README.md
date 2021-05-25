@@ -1,3 +1,5 @@
+![](https://github.com/kzkn/aspnet_password_hasher/workflows/CI/badge.svg)
+
 # AspnetPasswordHasher
 
 An implementation of password hashing compatible with [ASP.NET Identity PasswordHasher](https://github.com/dotnet/aspnetcore/blob/main/src/Identity/Extensions.Core/src/PasswordHasher.cs).
