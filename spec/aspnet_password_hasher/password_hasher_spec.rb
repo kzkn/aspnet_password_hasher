@@ -80,6 +80,10 @@ RSpec.describe AspnetPasswordHasher::PasswordHasher do
         ["AQAAAAAAAAD6AAAAEAhftMyfTJyAAAAAAAAAAAAAAAAAAAih5WsjXaR3PA9M"], # incorrect password
         ["AQAAAAIAAAAyAAAAEOMwvh3+FZxqkdMBz2ekgGhwQ4A="], # too short
         ["AQAAAAIAAAAyAAAAEOMwvh3+FZxqkdMBz2ekgGhwQ4B6pZWND6zgESBuWiHwAAAAAAAAAAAA"], # extra data at end
+        # irregular case
+        ["BQAAAAIAAAAyAAAAEOMwvh3+FZxqkdMBz2ekgGhwQ4B6pZWND6zgESBuWiHwAAAAAAAAAAAA"], # unknown version (0x05)
+        ["AQAAAAEAACcQAAAADwgXTwPfMz/1hZrAcmJdRM04f0nJxC4vzsW82I71yiX07QCuttE2Sg3ly9yPUoYM"], # too small salt size (120 bits)
+        ["AQAAAAMAACcQAAAAEB98ik4rMnThQzVdtfVfStpq0EpSA4tnEhciZTU8kznWADk4TOPsjRjqrA7PGIfxlQ=="], # unknown digest algorithm (prf = 3)
       ]
     end
 
