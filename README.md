@@ -1,3 +1,4 @@
+[![Gem Version](https://badge.fury.io/rb/aspnet_password_hasher.svg)](https://badge.fury.io/rb/aspnet_password_hasher)
 ![](https://github.com/kzkn/aspnet_password_hasher/workflows/CI/badge.svg)
 
 # AspnetPasswordHasher
