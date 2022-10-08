@@ -16,6 +16,15 @@ class SeqGen
 end
 
 RSpec.describe AspnetPasswordHasher::PasswordHasher do
+  PLAINTEXT_PASSWORD = "my password"
+  V2_SHA1_1000ITER_128SALT_256SUBKEY = "AAABAgMEBQYHCAkKCwwNDg+ukCEMDf0yyQ29NYubggHIVY0sdEUfdyeM+E1LtH1uJg==";
+  V3_SHA1_250ITER_128SALT_128SUBKEY = "AQAAAAAAAAD6AAAAEAhftMyfTJylOlZT+eEotFXd1elee8ih5WsjXaR3PA9M";
+  V3_SHA256_250000ITER_256SALT_256SUBKEY = "AQAAAAEAA9CQAAAAIESkQuj2Du8Y+kbc5lcN/W/3NiAZFEm11P27nrSN5/tId+bR1SwV8CO1Jd72r4C08OLvplNlCDc3oQZ8efcW+jQ=";
+  V3_SHA512_50ITER_128SALT_128SUBKEY = "AQAAAAIAAAAyAAAAEOMwvh3+FZxqkdMBz2ekgGhwQ4B6pZWND6zgESBuWiHw";
+  V3_SHA512_250ITER_256SALT_512SUBKEY = "AQAAAAIAAAD6AAAAIJbVi5wbMR+htSfFp8fTw8N8GOS/Sje+S/4YZcgBfU7EQuqv4OkVYmc4VJl9AGZzmRTxSkP7LtVi9IWyUxX8IAAfZ8v+ZfhjCcudtC1YERSqE1OEdXLW9VukPuJWBBjLuw==";
+  V3_SHA512_10000ITER_128SALT_256SUBKEY = "AQAAAAIAACcQAAAAEAABAgMEBQYHCAkKCwwNDg9B0Oxwty+PGIDSp95gcCfzeDvA4sGapUIUov8usXfD6A==";
+  V3_SHA512_100000ITER_128SALT_256SUBKEY = "AQAAAAIAAYagAAAAEAABAgMEBQYHCAkKCwwNDg/Q8A0WMKbtHQJQ2DHCdoEeeFBrgNlldq6vH4qX/CGqGQ==";
+
   describe '.new' do
     it 'raises error if invalid compat mode' do
       expect { AspnetPasswordHasher::PasswordHasher.new(mode: :v1) }.to raise_error ArgumentError
@@ -52,20 +61,20 @@ RSpec.describe AspnetPasswordHasher::PasswordHasher do
   describe '#hash_password' do
     it 'defaults to version 3' do
       hasher = AspnetPasswordHasher::PasswordHasher.new(mode: nil, random_number_generator: SeqGen.new)
-      ret_val = hasher.hash_password("my password")
-      expect(ret_val).to eq "AQAAAAEAACcQAAAAEAABAgMEBQYHCAkKCwwNDg+yWU7rLgUwPZb1Itsmra7cbxw2EFpwpVFIEtP+JIuUEw=="
+      ret_val = hasher.hash_password(PLAINTEXT_PASSWORD)
+      expect(ret_val).to eq V3_SHA512_100000ITER_128SALT_256SUBKEY
     end
 
     it 'supports version 2' do
       hasher = AspnetPasswordHasher::PasswordHasher.new(mode: :v2, random_number_generator: SeqGen.new)
-      ret_val = hasher.hash_password("my password")
-      expect(ret_val).to eq "AAABAgMEBQYHCAkKCwwNDg+ukCEMDf0yyQ29NYubggHIVY0sdEUfdyeM+E1LtH1uJg=="
+      ret_val = hasher.hash_password(PLAINTEXT_PASSWORD)
+      expect(ret_val).to eq V2_SHA1_1000ITER_128SALT_256SUBKEY
     end
 
     it 'supports version 3' do
       hasher = AspnetPasswordHasher::PasswordHasher.new(mode: :v3, random_number_generator: SeqGen.new)
-      ret_val = hasher.hash_password("my password")
-      expect(ret_val).to eq "AQAAAAEAACcQAAAAEAABAgMEBQYHCAkKCwwNDg+yWU7rLgUwPZb1Itsmra7cbxw2EFpwpVFIEtP+JIuUEw=="
+      ret_val = hasher.hash_password(PLAINTEXT_PASSWORD)
+      expect(ret_val).to eq V3_SHA512_100000ITER_128SALT_256SUBKEY
     end
   end
 
@@ -90,7 +99,7 @@ RSpec.describe AspnetPasswordHasher::PasswordHasher do
     with_them do
       example do
         hasher = AspnetPasswordHasher::PasswordHasher.new
-        result = hasher.verify_hashed_password(hashed_password, "my password")
+        result = hasher.verify_hashed_password(hashed_password, PLAINTEXT_PASSWORD)
         expect(result).to eq :failed
       end
     end
@@ -100,19 +109,18 @@ RSpec.describe AspnetPasswordHasher::PasswordHasher do
     where(:hashed_password) do
       [
         # Version 2 payloads
-        ["ANXrDknc7fGPpigibZXXZFMX4aoqz44JveK6jQuwY3eH/UyPhvr5xTPeGYEckLxz9A=="], # SHA1, 1000 iterations, 128-bit salt, 256-bit subkey
+        [V2_SHA1_1000ITER_128SALT_256SUBKEY],
         # Version 3 payloads
-        ["AQAAAAIAAAAyAAAAEOMwvh3+FZxqkdMBz2ekgGhwQ4B6pZWND6zgESBuWiHw"], # SHA512, 50 iterations, 128-bit salt, 128-bit subkey
-        ["AQAAAAIAAAD6AAAAIJbVi5wbMR+htSfFp8fTw8N8GOS/Sje+S/4YZcgBfU7EQuqv4OkVYmc4VJl9AGZzmRTxSkP7LtVi9IWyUxX8IAAfZ8v+ZfhjCcudtC1YERSqE1OEdXLW9VukPuJWBBjLuw=="], # SHA512, 250 iterations, 256-bit salt, 512-bit subkey
-        ["AQAAAAAAAAD6AAAAEAhftMyfTJylOlZT+eEotFXd1elee8ih5WsjXaR3PA9M"], # SHA1, 250 iterations, 128-bit salt, 128-bit subkey
-        ["AQAAAAEAA9CQAAAAIESkQuj2Du8Y+kbc5lcN/W/3NiAZFEm11P27nrSN5/tId+bR1SwV8CO1Jd72r4C08OLvplNlCDc3oQZ8efcW+jQ="], # SHA256, 250000 iterations, 256-bit salt, 256-bit subkey
+        [V3_SHA512_50ITER_128SALT_128SUBKEY],
+        [V3_SHA512_250ITER_256SALT_512SUBKEY],
+        [V3_SHA512_100000ITER_128SALT_256SUBKEY],
       ]
     end
 
     with_them do
       example do
         hasher = AspnetPasswordHasher::PasswordHasher.new(mode: :v2)
-        result = hasher.verify_hashed_password(hashed_password, "my password")
+        result = hasher.verify_hashed_password(hashed_password, PLAINTEXT_PASSWORD)
         expect(result).to eq :success
       end
     end
@@ -122,19 +130,21 @@ RSpec.describe AspnetPasswordHasher::PasswordHasher do
     where(:hashed_password, :expected_result) do
       [
         # Version 2 payloads
-        ["ANXrDknc7fGPpigibZXXZFMX4aoqz44JveK6jQuwY3eH/UyPhvr5xTPeGYEckLxz9A==", :success_rehash_needed], # SHA1, 1000 iterations, 128-bit salt, 256-bit subkey
+        [V2_SHA1_1000ITER_128SALT_256SUBKEY, :success_rehash_needed],
         # Version 3 payloads
-        ["AQAAAAIAAAAyAAAAEOMwvh3+FZxqkdMBz2ekgGhwQ4B6pZWND6zgESBuWiHw", :success_rehash_needed], # SHA512, 50 iterations, 128-bit salt, 128-bit subkey
-        ["AQAAAAIAAAD6AAAAIJbVi5wbMR+htSfFp8fTw8N8GOS/Sje+S/4YZcgBfU7EQuqv4OkVYmc4VJl9AGZzmRTxSkP7LtVi9IWyUxX8IAAfZ8v+ZfhjCcudtC1YERSqE1OEdXLW9VukPuJWBBjLuw==", :success_rehash_needed], # SHA512, 250 iterations, 256-bit salt, 512-bit subkey
-        ["AQAAAAAAAAD6AAAAEAhftMyfTJylOlZT+eEotFXd1elee8ih5WsjXaR3PA9M", :success_rehash_needed], # SHA1, 250 iterations, 128-bit salt, 128-bit subkey
-        ["AQAAAAEAA9CQAAAAIESkQuj2Du8Y+kbc5lcN/W/3NiAZFEm11P27nrSN5/tId+bR1SwV8CO1Jd72r4C08OLvplNlCDc3oQZ8efcW+jQ=", :success], # SHA256, 250000 iterations, 256-bit salt, 256-bit subkey
+        [V3_SHA1_250ITER_128SALT_128SUBKEY, :success_rehash_needed],
+        [V3_SHA256_250000ITER_256SALT_256SUBKEY, :success_rehash_needed],
+        [V3_SHA512_50ITER_128SALT_128SUBKEY, :success_rehash_needed],
+        [V3_SHA512_250ITER_256SALT_512SUBKEY, :success_rehash_needed],
+        [V3_SHA512_10000ITER_128SALT_256SUBKEY, :success_rehash_needed],
+        [V3_SHA512_100000ITER_128SALT_256SUBKEY, :success],
       ]
     end
 
     with_them do
       example do
         hasher = AspnetPasswordHasher::PasswordHasher.new
-        result = hasher.verify_hashed_password(hashed_password, "my password")
+        result = hasher.verify_hashed_password(hashed_password, PLAINTEXT_PASSWORD)
         expect(result).to eq expected_result
       end
     end

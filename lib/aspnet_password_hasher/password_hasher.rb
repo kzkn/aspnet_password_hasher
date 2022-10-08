@@ -6,6 +6,10 @@ require 'base64'
 
 module AspnetPasswordHasher
   class PasswordHasher
+    KEY_DERIVATION_PRF_HMACSHA1 = 0
+    KEY_DERIVATION_PRF_HMACSHA256 = 1
+    KEY_DERIVATION_PRF_HMACSHA512 = 2
+
     def initialize(options = {})
       @mode = options[:mode] || :v3
       @rng = options[:random_number_generator] || SecureRandom
@@ -14,7 +18,7 @@ module AspnetPasswordHasher
       when :v2
         @iter_count = 0
       when :v3
-        @iter_count = options[:iter_count] || 10000
+        @iter_count = options[:iter_count] || 100000
         if @iter_count < 1
           raise ArgumentError, "Invalid password hasher iteration count"
         end
@@ -45,9 +49,15 @@ module AspnetPasswordHasher
         end
       when "\x01"
         # v3
-        result, embed_iter_count = verify_hashed_password_v3(decoded_hashed_password, provided_password)
+        result, embed_iter_count, prf = verify_hashed_password_v3(decoded_hashed_password, provided_password)
         if result
-          embed_iter_count < @iter_count ? :success_rehash_needed : :success
+          if embed_iter_count < @iter_count
+            :success_rehash_needed
+          elsif prf == KEY_DERIVATION_PRF_HMACSHA1 || prf == KEY_DERIVATION_PRF_HMACSHA256
+            :success_rehash_needed
+          else
+            :success
+          end
         else
           :failed
         end
@@ -75,12 +85,12 @@ module AspnetPasswordHasher
     end
 
     def hash_password_v3(password)
-      prf = 1 # HMACSHA256
+      prf = KEY_DERIVATION_PRF_HMACSHA512
       salt_size = 128 / 8
       num_bytes_requested = 256 / 8
 
       salt = @rng.bytes(salt_size)
-      digest = OpenSSL::Digest::SHA256.new
+      digest = OpenSSL::Digest::SHA512.new
       subkey = OpenSSL::PKCS5.pbkdf2_hmac(password, salt, @iter_count, num_bytes_requested, digest)
 
       output_bytes = String.new
@@ -116,31 +126,31 @@ module AspnetPasswordHasher
       salt_len = hashed_password[9..12].unpack('N')[0]
       # salt must be >= 128 bits
       if salt_len < 128 / 8
-        return [false, nil]
+        return [false, nil, nil]
       end
 
       salt = hashed_password[13...(13 + salt_len)]
       subkey_len = hashed_password.length - 13 - salt_len
       # subkey must by >= 128 bits
       if subkey_len < 128 / 8
-        return [false, nil]
+        return [false, nil, nil]
       end
 
       expected_subkey = hashed_password[(13 + salt_len)...hashed_password.length]
 
       digest = case prf
-               when 0
+               when KEY_DERIVATION_PRF_HMACSHA1
                  OpenSSL::Digest::SHA1.new
-               when 1
+               when KEY_DERIVATION_PRF_HMACSHA256
                  OpenSSL::Digest::SHA256.new
-               when 2
+               when KEY_DERIVATION_PRF_HMACSHA512
                  OpenSSL::Digest::SHA512.new
                end
       actual_subkey = OpenSSL::PKCS5.pbkdf2_hmac(password, salt, iter_count, subkey_len, digest)
 
-      [expected_subkey == actual_subkey, iter_count]
+      [expected_subkey == actual_subkey, iter_count, prf]
     rescue StandardError
-      [false, nil]
+      [false, nil, nil]
     end
   end
 end
